@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-def plot_cf(ravg, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,
+def plot_cf(rs, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,
             log=False, err=False, zoom=False):
 
     colors = ['r','g','b','m']
@@ -19,11 +19,16 @@ def plot_cf(ravg, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,
         print mean
         std = np.std(cfs[:,j], axis=0)
 
-        offset = 10**(np.log10(ravg)+np.log10(0.02*j))
-        ax[0].errorbar(ravg+offset, mean, yerr=std, capsize=1, color=colors[j], label=ests[j])
+        offset = 10**(np.log10(rs[j])+np.log10(0.02*j))
+        ax[0].errorbar(rs[j]+offset, mean, yerr=std, capsize=1, color=colors[j], label=ests[j])
 
         if err:
-            ax[1].plot(ravg, (mean-cftrue)/cftrue, color=colors[j])
+            if 'proj' in ests[j]:
+                ax[1].plot(rs[j], (mean-cftrue_cont)/cftrue_cont, color=colors[j])
+            else:
+                ax[1].plot(rs[j], (mean-cftrue)/cftrue, color=colors[j])
+
+
 
     ax[0].plot(r_cont, cftrue_cont, color='k', label='true')
 
