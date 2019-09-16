@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -N nbar1e-5
+#PBS -l walltime=12:00:00
+#PBS -l nodes=1:ppn=20
+#PBS -m ae
+#PBS -j oe
+
+#ssh ksf293@sirocco.cosmo.fas.nyu.edu /opt/torque/bin/qsub .
+cd $PBS_O_WORKDIR
+echo $PBS_O_WORKDIR
+echo 'starting'
+echo -n 'Job is running on node '; cat $PBS_NODEFILE
+python lognormal.py
+echo 'done'
