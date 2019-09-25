@@ -21,10 +21,19 @@ from Corrfunc.utils import evaluate_xi
 
 
 plot_dir = '../plots/plots_2019-09-16'
-tag = 'nbar1e-4_top'
+#tag = 'nbar1e-4_top'
 nthreads = 24
+color_dict = {'True':'black', 'tophat':'blue', 'LS': 'orange', 'piecewise':'red'}
+
 
 def main():
+
+    nbar_str = '3e-4'
+    proj_type = 'tophat'
+    tag = '_nbar{}_{}'.format(nbar_str, proj_type)
+
+    nbar = float(nbar_str)
+
     print(Corrfunc.__version__)
     redshift = 0
     cosmo = cosmology.Planck15
@@ -35,15 +44,20 @@ def main():
     print("Making catalog")
     s = time.time()
     #boxsize = 100.
+    #hval = 0.7
     boxsize = 750.
+    
     rmin = 1
     rmax = 150
-    rbins = np.linspace(rmin, rmax, 10)
+    nbins = 20
+    rbins = np.linspace(rmin, rmax, nbins)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
-    r_lin = np.linspace(rmin, rmax, 200)
-    r_log = np.logspace(np.log10(rmin), np.log10(rmax), 200)
+    rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
+    rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
+    
+    r_lin = np.linspace(rmin, rmax, 300)
+    r_log = np.logspace(np.log10(rmin), np.log10(rmax), 300)
 
-    nbar = 1e-4
     data = LogNormalCatalog(Plin=Plin, nbar=nbar, BoxSize=boxsize, Nmesh=256, bias=b1, seed=42)
     print('time: {}'.format(time.time()-s)) 
     nd = data.csize
@@ -62,10 +76,19 @@ def main():
     xi_lin = CF(r_lin)
     
     print("Calc corrfunc CF")
+    print("LIN")
     dd, dr, rr = counts_corrfunc_3d(data, random, rbins)
-    #xi_ls = compute_cf(dd, dr, rr, nd, nr, 'ls')
+    xi_ls = compute_cf(dd, dr, rr, nd, nr, 'ls')
+    
+    print("LOG")
+    dd_log, dr_log, rr_log = counts_corrfunc_3d(data, random, rbins_log)
+    xi_ls_log = compute_cf(dd_log, dr_log, rr_log, nd, nr, 'ls')
+    
     #xi_nat = compute_cf(dd, dr, rr, nd, nr, 'natural')
-    r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin)
+    print("LIN PROJ")
+    r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin, proj_type)
+    print("LOG PROJ")
+    r_cont_log, xi_proj_log = compute_cf_proj(datasky, randomsky, nd, nr, rbins_log, r_log, proj_type)
 
     #SimCF = nbodykit.algorithms.paircount_tpcf.tpcf.SimulationBox2PCF('2d', cat, edges, Nmu=1, randoms1=random, periodic=True, BoxSize=boxsize, show_progress=True)
     #SimCF.run()
@@ -75,25 +98,25 @@ def main():
     plt.figure()
     k = np.logspace(-3, 2, 300)
     plt.loglog(k, b1**2 * Plin(k), c='k', label=r'$b_1^2 P_\mathrm{lin}$')
-    plt.savefig('{}/pk_{}.png'.format(plot_dir, tag))
+    plt.savefig('{}/pk{}.png'.format(plot_dir, tag))
 
     plt.figure()
-    plt.loglog(r_log, xi_log, label='True')
-    #plt.loglog(rbins_avg, xi_ls, label='LS')
+    plt.loglog(r_log, xi_log, label='True', color=color_dict['True'])
+    plt.loglog(rbins_avg_log, xi_ls_log, label='LS', color=color_dict['LS'])
     #plt.loglog(rbins_avg, xi_nat, label='natural')
-    plt.loglog(r_lin, xi_proj, label='piecewise')
+    plt.loglog(r_log, xi_proj_log, label=proj_type, color=color_dict[proj_type])
     plt.legend()
-    plt.savefig('{}/cf_log_{}.png'.format(plot_dir, tag))
+    plt.savefig('{}/cf_log{}.png'.format(plot_dir, tag))
 
     plt.figure()
-    plt.plot(r_lin, xi_lin, label='True')
-    #plt.plot(rbins_avg, xi_ls, label='LS')
+    plt.plot(r_lin, xi_lin, label='True', color=color_dict['True'])
+    plt.plot(rbins_avg, xi_ls, label='LS', color=color_dict['LS'])
     #plt.plot(rbins_avg, xi_nat, label='natural')
-    plt.plot(r_lin, xi_proj, label='piecewise')
+    plt.plot(r_lin, xi_proj, label=proj_type, color=color_dict[proj_type])
     plt.legend()
     plt.xlim(40, 150)
-    plt.ylim(0, 0.05)
-    plt.savefig('{}/cf_lin_{}.png'.format(plot_dir, tag))
+    plt.ylim(-0.02, 0.03)
+    plt.savefig('{}/cf_lin{}.png'.format(plot_dir, tag))
     #ra, dec, z = to_sky(cat.Position(), cat.Velocity(), cosmo)
     
     plt.show()
@@ -152,7 +175,7 @@ def compute_cf(dd, dr, rr, nd, nr, est):
         exit("Estimator '{}' not recognized".format(est))
 
 
-def compute_cf_proj(data, random, nd, nr, rbins, r_cont):
+def compute_cf_proj(data, random, nd, nr, rbins, r_cont, proj_type):
 
     
     cosmo = LambdaCDM(H0=70, Om0=0.25, Ode0=0.75)
@@ -161,9 +184,9 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont):
     datadec = data[1].compute().astype(float)
     datacz = data[2].compute().astype(float)
 
-    randra = data[0].compute().astype(float)
-    randdec = data[1].compute().astype(float)
-    randcz = data[2].compute().astype(float)
+    randra = random[0].compute().astype(float)
+    randdec = random[1].compute().astype(float)
+    randcz = random[2].compute().astype(float)
     print(datara)
 
     #datax = np.array(data['Position'][:,0]).astype(float)
@@ -199,12 +222,11 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont):
     #smin = min(rbins)
     #smax = max(rbins)
     #sbins = np.linspace(smin, smax, K + 1)
-    proj_type = 'piecewise'
     projfn = None
     if proj_type=="tophat" or proj_type=="piecewise":
-      nprojbins = len(rbins)-1
+        nprojbins = len(rbins)-1
     elif proj_type=="powerlaw":
-          nprojbins = 3
+        nprojbins = 3
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
     print "nprojbins:", nprojbins
@@ -218,10 +240,14 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont):
                                   datacz, randra, randdec,
                                   randcz, rbins, mumax, cosmo, nproc=nproc,
                                   weights_data=weights_data, weights_rand=weights_rand,
-                                  comoving=True, proj_type=proj_type,
+                                  comoving=False, proj_type=proj_type,
                                   nprojbins=nprojbins)
 
     dd, dr, rr, qq, dd_orig, dr_orig, rr_orig = res
+    print("Projected results:")
+    print(dd)
+    print(dr)
+    print(rr)
     # Note: dr twice because cross-correlations will be possible
     amps = compute_amps(nprojbins, nd, nd, nr, nr, dd, dr, dr, rr, qq)
     print 'Computed amplitudes'
@@ -236,7 +262,8 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont):
 
 
 def to_sky(pos, velocity, cosmo):
-    ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo, velocity=velocity, observer=[0, 0, 0], zmax=100.0, frame='icrs')
+    #ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo, velocity=velocity, observer=[0, 0, 0], zmax=100.0, frame='icrs')
+    ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo)
     return ra, dec, z
 
 
