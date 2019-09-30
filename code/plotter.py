@@ -1,5 +1,79 @@
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
+
+
+
+color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'red', 'linear spline':'red', 'cosmo deriv':'purple'}
+
+def plot_cf_cont(rs, cfs, labels, r_true, cf_true, saveto=None,
+            log=False, err=False, zoom=False):
+
+    if err:
+        fig, ax = plt.subplots(2, 1, figsize=(8,8), gridspec_kw={'height_ratios': [2, 1]})
+    else:
+        plt.figure(figsize=(8,6))
+        ax = plt.gca()
+        ax = [ax]
+    
+    if log:
+        xmin = 0
+    else:
+        xmin = 40
+    r_t = np.array([r_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
+    cf_t = np.array([cf_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
+    cf_t = 1 + cf_t
+    ax[0].plot(r_t, cf_t, color=color_dict['True'], label='True')
+    
+    for j in range(len(rs)):
+
+        color = color_dict[labels[j]]
+        if len(rs[j])==len(r_true):
+            marker = None
+            ls = '-'
+        else:
+            marker = 'o'
+            ls = 'None'
+        
+        r = np.array([rs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
+        cf = np.array([cfs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
+        cf = 1 + cf
+        
+        ax[0].plot(r, cf, color=color, label=labels[j], marker=marker, ls=ls)
+
+        if err and len(rs[j])==len(r_true):
+            ax[1].plot(r, (cf-cf_t)/cf_t, color=color)
+
+    ax[0].set_xlabel('r')
+    #ax[0].set_ylabel(r'$\xi(r)$')
+    ax[0].set_ylabel(r'$1 + \xi(r)$')
+    
+    if zoom:
+        ax[0].set_ylim(-0.05, 0.05)
+
+    if log:
+        ax[0].set_xscale('log')
+        ax[0].set_yscale('log')
+        if err:
+            ax[1].set_xscale('log')
+    #else:
+    #    ax[0].set_xlim(40, max(r_true))
+    #    ax[1].set_xlim(40, max(r_true))
+        #ax[0].set_ylim(-0.05,0.05)
+
+    if err:
+        ax[1].axhline(0, color=color_dict['True'])
+        ax[1].set_xlabel('r')
+        #ax[1].set_ylabel(r'($\xi-\xi_{true})/\xi_{true}$')
+        ax[1].set_ylabel('fractional error')
+        #ax[1].set_ylim(-0.5, 0.5)
+
+    ax[0].legend()
+
+    if saveto:
+        plt.savefig(saveto)
+
 
 
 def plot_cf(rs, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,

@@ -20,17 +20,20 @@ from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
 
 
-plot_dir = '../plots/plots_2019-09-16'
+plot_dir = '../plots/plots_2019-09-30'
+result_dir = '../results/results_2019-09-26'
 #tag = 'nbar1e-4_top'
 nthreads = 24
-color_dict = {'True':'black', 'tophat':'blue', 'LS': 'orange', 'piecewise':'red'}
+color_dict = {'True':'black', 'tophat':'blue', 'LS': 'orange', 'piecewise':'red', 'standard': 'orange'}
+label_dict = {'generalr': 'cosmo deriv', 'tophat': 'tophat', 'piecewise':'linear spline'}
 
 
 def main():
 
     nbar_str = '3e-4'
-    proj_type = 'tophat'
-    tag = '_nbar{}_{}'.format(nbar_str, proj_type)
+    #proj_types = ['tophat','generalr']
+    proj_types = ['piecewise']
+    tag = '_nbar{}'.format(nbar_str)
 
     nbar = float(nbar_str)
 
@@ -74,21 +77,40 @@ def main():
     CF = nbodykit.cosmology.correlation.CorrelationFunction(Plin)
     xi_log = CF(r_log)#, smoothing=0.0, kmin=10**-2, kmax=10**0)
     xi_lin = CF(r_lin)
+    np.save('{}/cf_lin_{}{}.npy'.format(result_dir, 'true', tag), [r_lin, xi_lin, 'true'])
+    np.save('{}/cf_log_{}{}.npy'.format(result_dir, 'true', tag), [r_log, xi_log, 'true'])
     
     print("Calc corrfunc CF")
     print("LIN")
     dd, dr, rr = counts_corrfunc_3d(data, random, rbins)
-    xi_ls = compute_cf(dd, dr, rr, nd, nr, 'ls')
-    
+    xi_stan = compute_cf(dd, dr, rr, nd, nr, 'ls') 
     print("LOG")
     dd_log, dr_log, rr_log = counts_corrfunc_3d(data, random, rbins_log)
-    xi_ls_log = compute_cf(dd_log, dr_log, rr_log, nd, nr, 'ls')
+    xi_stan_log = compute_cf(dd_log, dr_log, rr_log, nd, nr, 'ls')
     
     #xi_nat = compute_cf(dd, dr, rr, nd, nr, 'natural')
-    print("LIN PROJ")
-    r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin, proj_type)
-    print("LOG PROJ")
-    r_cont_log, xi_proj_log = compute_cf_proj(datasky, randomsky, nd, nr, rbins_log, r_log, proj_type)
+    rs_lin = [rbins_avg]
+    rs_log = [rbins_avg_log]
+    cfs_lin = [xi_stan]
+    cfs_log = [xi_stan_log]
+    np.save('{}/cf_lin_{}{}.npy'.format(result_dir, 'standard', tag), [rbins_avg, xi_stan, 'standard'])
+    np.save('{}/cf_log_{}{}.npy'.format(result_dir, 'standard', tag), [rbins_avg_log, xi_stan_log, 'standard'])
+    labels = ['standard']
+    for proj_type in proj_types:
+        labels.append(label_dict[proj_type])
+        print("LIN PROJ")
+        r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin, proj_type)
+        rs_lin.append(r_lin)
+        cfs_lin.append(xi_proj)
+
+        
+        print("LOG PROJ")
+        r_cont_log, xi_proj_log = compute_cf_proj(datasky, randomsky, nd, nr, rbins_log, r_log, proj_type)
+        rs_log.append(r_log)
+        cfs_log.append(xi_proj_log)
+        np.save('{}/cf_lin_{}{}.npy'.format(result_dir, proj_type, tag), [r_lin, xi_proj, proj_type])
+        np.save('{}/cf_log_{}{}.npy'.format(result_dir, proj_type, tag), [r_log, xi_proj_log, proj_type])
+        
 
     #SimCF = nbodykit.algorithms.paircount_tpcf.tpcf.SimulationBox2PCF('2d', cat, edges, Nmu=1, randoms1=random, periodic=True, BoxSize=boxsize, show_progress=True)
     #SimCF.run()
@@ -100,26 +122,12 @@ def main():
     plt.loglog(k, b1**2 * Plin(k), c='k', label=r'$b_1^2 P_\mathrm{lin}$')
     plt.savefig('{}/pk{}.png'.format(plot_dir, tag))
 
-    plt.figure()
-    plt.loglog(r_log, xi_log, label='True', color=color_dict['True'])
-    plt.loglog(rbins_avg_log, xi_ls_log, label='LS', color=color_dict['LS'])
-    #plt.loglog(rbins_avg, xi_nat, label='natural')
-    plt.loglog(r_log, xi_proj_log, label=proj_type, color=color_dict[proj_type])
-    plt.legend()
-    plt.savefig('{}/cf_log{}.png'.format(plot_dir, tag))
+    save_lin = '{}/cf_lin_resid{}.png'.format(plot_dir, tag)
+    #plotter.plot_cf_cont(rs_lin, cfs_lin, labels, r_lin, xi_lin, saveto=save_lin, log=False, err=True)
 
-    plt.figure()
-    plt.plot(r_lin, xi_lin, label='True', color=color_dict['True'])
-    plt.plot(rbins_avg, xi_ls, label='LS', color=color_dict['LS'])
-    #plt.plot(rbins_avg, xi_nat, label='natural')
-    plt.plot(r_lin, xi_proj, label=proj_type, color=color_dict[proj_type])
-    plt.legend()
-    plt.xlim(40, 150)
-    plt.ylim(-0.02, 0.03)
-    plt.savefig('{}/cf_lin{}.png'.format(plot_dir, tag))
-    #ra, dec, z = to_sky(cat.Position(), cat.Velocity(), cosmo)
-    
-    plt.show()
+    save_log = '{}/cf_log_resid{}.png'.format(plot_dir, tag)
+    #plotter.plot_cf_cont(rs_log, cfs_log, labels, r_log, xi_log, saveto=save_log, log=True, err=True)
+
 
 
 def counts_corrfunc_3d(data, random, rbins):
@@ -227,10 +235,12 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont, proj_type):
         nprojbins = len(rbins)-1
     elif proj_type=="powerlaw":
         nprojbins = 3
+    elif proj_type=='generalr':
+        nprojbins = 6
+        projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_rsd_norm.dat"
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
     print "nprojbins:", nprojbins
-
 
     mumax = 1.0 #max of cosine
     weights_data = None
@@ -241,7 +251,7 @@ def compute_cf_proj(data, random, nd, nr, rbins, r_cont, proj_type):
                                   randcz, rbins, mumax, cosmo, nproc=nproc,
                                   weights_data=weights_data, weights_rand=weights_rand,
                                   comoving=False, proj_type=proj_type,
-                                  nprojbins=nprojbins)
+                                  nprojbins=nprojbins, projfn=projfn)
 
     dd, dr, rr, qq, dd_orig, dr_orig, rr_orig = res
     print("Projected results:")
