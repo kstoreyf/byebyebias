@@ -3,3 +3,5 @@ plots/
 *.o*
 results/
 catalogs/
+.idea
+.DS_store
