@@ -15,7 +15,7 @@ def main():
 
 def write_bases(rmin, rmax, nbins, order, saveto, ncont=300):
 	bases = get_bases(rmin, rmax, nbins, order, ncont=ncont)
-	np.savetxt(saveto, bases)
+	np.savetxt(saveto, bases.T)
 	return saveto
 
 # get knot vectors
@@ -41,11 +41,12 @@ def get_bases(rmin, rmax, nbins, order, ncont=300):
     kvs = get_kvs(rmin, rmax, nbins, order)
     print(kvs)
     rcont = np.linspace(rmin, rmax, ncont)
-    bases = np.empty((nbins, ncont))
+    bases = np.empty((nbins+1, ncont))
+    bases[0,:] = rcont
     for n in range(nbins):
         kv = kvs[n]
         b = BSpline.basis_element(kv)
-        bases[n,:] = [b(r) if kv[0]<=r<=kv[-1] else 0 for r in rcont]
+        bases[n+1,:] = [b(r) if kv[0]<=r<=kv[-1] else 0 for r in rcont]
     return bases
 
 

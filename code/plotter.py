@@ -5,9 +5,9 @@ from matplotlib import pyplot as plt
 
 
 
-color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'red', 'linear spline':'red', 'cosmo deriv':'purple'}
+color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'crimson', 'linear spline':'red', 'cosmo deriv':'purple', 'triangle':'crimson'}
 
-def plot_cf_cont(rs, cfs, labels, r_true, cf_true, saveto=None,
+def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, saveto=None,
             log=False, err=False, zoom=False):
 
     if err:
@@ -24,11 +24,10 @@ def plot_cf_cont(rs, cfs, labels, r_true, cf_true, saveto=None,
     r_t = np.array([r_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
     cf_t = np.array([cf_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
     cf_t = 1 + cf_t
-    ax[0].plot(r_t, cf_t, color=color_dict['True'], label='True')
+    ax[0].plot(r_t, cf_t, color='k', label='True')
     
     for j in range(len(rs)):
 
-        color = color_dict[labels[j]]
         if len(rs[j])==len(r_true):
             marker = None
             ls = '-'
@@ -40,10 +39,10 @@ def plot_cf_cont(rs, cfs, labels, r_true, cf_true, saveto=None,
         cf = np.array([cfs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
         cf = 1 + cf
         
-        ax[0].plot(r, cf, color=color, label=labels[j], marker=marker, ls=ls)
+        ax[0].plot(r, cf, color=colors[j], label=labels[j], marker=marker, ls=ls)
 
         if err and len(rs[j])==len(r_true):
-            ax[1].plot(r, (cf-cf_t)/cf_t, color=color)
+            ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j])
 
     ax[0].set_xlabel('r')
     #ax[0].set_ylabel(r'$\xi(r)$')
@@ -63,7 +62,7 @@ def plot_cf_cont(rs, cfs, labels, r_true, cf_true, saveto=None,
         #ax[0].set_ylim(-0.05,0.05)
 
     if err:
-        ax[1].axhline(0, color=color_dict['True'])
+        ax[1].axhline(0, color='k')
         ax[1].set_xlabel('r')
         #ax[1].set_ylabel(r'($\xi-\xi_{true})/\xi_{true}$')
         ax[1].set_ylabel('fractional error')

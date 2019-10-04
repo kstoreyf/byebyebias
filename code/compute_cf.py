@@ -15,28 +15,29 @@ from astropy import units as u
 
 import plotter
 import corrfuncproj
+import spline
 
 from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
 
 
-plot_dir = '../plots/plots_2019-09-30'
-result_dir = '../results/results_2019-09-30'
+plot_dir = '../plots/plots_2019-10-03'
+result_dir = '../results/results_2019-10-03'
 cat_dir = '../catalogs/catalogs_2019-09-30'
 nthreads = 24
 color_dict = {'True':'black', 'tophat':'blue', 'LS': 'orange', 'piecewise':'red', 'standard': 'orange'}
-label_dict = {'generalr': 'cosmo deriv', 'tophat': 'tophat', 'piecewise':'linear spline'}
 
 
 def main():
 
     boxsize = 750
-    nbar_str = '3e-4' 
-    #proj_types = ['tophat','generalr']
-    #proj_types = ['tophat']
-    proj_types = ['piecewise']
+    nbar_str = '3e-4'
+    projs = ['quadratic_spline']
+    #projs = ['tophat', 'piecewise']
+    #projs = []
     cat_tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
-    tag = cat_tag
+    tag = '_nbins8'+cat_tag
+    log = False
 
     print("Get data")
     cat_fn = '{}/cat_lognormal{}.dat'.format(cat_dir, cat_tag)
@@ -52,74 +53,77 @@ def main():
     nr = random.shape[0]
 
     print("Set up bins")
-    rmin = 1
+    if log:
+        rmin = 1
+    else:
+        rmin = 40
     rmax = 150
-    nbins = 20
+    nbins = 9
     rbins = np.linspace(rmin, rmax, nbins)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
-    rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
-    rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
     r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag))
-    r_log, _, _ = np.load('{}/cf_log_{}{}.npy'.format(cat_dir, 'true', cat_tag))
+    if log:
+        rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
+        rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
+        r_log, _, _ = np.load('{}/cf_log_{}{}.npy'.format(cat_dir, 'true', cat_tag))
 
     print("Calc standard corrfunc CF")
     print("LIN")
-    dd, dr, rr = counts_corrfunc_3d(data, random, rbins)
+    dd, dr, rr = counts_corrfunc_3d(data, random, rbins, boxsize)
     xi_stan = compute_cf(dd, dr, rr, nd, nr, 'ls') 
-    print("LOG")
-    dd_log, dr_log, rr_log = counts_corrfunc_3d(data, random, rbins_log)
-    xi_stan_log = compute_cf(dd_log, dr_log, rr_log, nd, nr, 'ls')
     np.save('{}/cf_lin_{}{}.npy'.format(result_dir, 'standard', tag), [rbins_avg, xi_stan, 'standard'])
-    np.save('{}/cf_log_{}{}.npy'.format(result_dir, 'standard', tag), [rbins_avg_log, xi_stan_log, 'standard'])
+    if log:
+        print("LOG")
+        dd_log, dr_log, rr_log = counts_corrfunc_3d(data, random, rbins_log, boxsize)
+        xi_stan_log = compute_cf(dd_log, dr_log, rr_log, nd, nr, 'ls')
+        np.save('{}/cf_log_{}{}.npy'.format(result_dir, 'standard', tag), [rbins_avg_log, xi_stan_log, 'standard'])
 
     print("Calc projected CF")
     rs_lin = [rbins_avg]
-    rs_log = [rbins_avg_log]
     cfs_lin = [xi_stan]
-    cfs_log = [xi_stan_log]
-    labels = ['standard']
-    
-    for proj_type in proj_types:
-        labels.append(label_dict[proj_type])
+    if log:
+        cfs_log = [xi_stan_log]
+        rs_log = [rbins_avg_log]
+
+    for proj in projs:
         print("LIN PROJ")
-        r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin, proj_type)
+        r_cont, xi_proj = compute_cf_proj(datasky, randomsky, nd, nr, rbins, r_lin, proj)
         rs_lin.append(r_lin)
         cfs_lin.append(xi_proj)
-
-        print("LOG PROJ")
-        r_cont_log, xi_proj_log = compute_cf_proj(datasky, randomsky, nd, nr, rbins_log, r_log, proj_type)
-        rs_log.append(r_log)
-        cfs_log.append(xi_proj_log)
+        np.save('{}/cf_lin_{}{}.npy'.format(result_dir, proj, tag), [r_lin, xi_proj, proj])
+        if log:
+            print("LOG PROJ")
+            r_cont_log, xi_proj_log = compute_cf_proj(datasky, randomsky, nd, nr, rbins_log, r_log, proj)
+            rs_log.append(r_log)
+            cfs_log.append(xi_proj_log)
+            np.save('{}/cf_log_{}{}.npy'.format(result_dir, proj, tag), [r_log, xi_proj_log, proj])
         
-        np.save('{}/cf_lin_{}{}.npy'.format(result_dir, proj_type, tag), [r_lin, xi_proj, proj_type])
-        np.save('{}/cf_log_{}{}.npy'.format(result_dir, proj_type, tag), [r_log, xi_proj_log, proj_type])
-        
 
 
 
-def counts_corrfunc_3d(data, random, rbins):
+def counts_corrfunc_3d(data, random, rbins, boxsize):
 
     print data.shape
     datax, datay, dataz = data.T
     randx, randy, randz = random.T
     
-    periodic = False
+    periodic = True
     print('Starting counts')
     s = time.time()
     dd = DD(1, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
-               periodic=periodic)
+               periodic=periodic, boxsize=boxsize)
     dd = np.array([x[3] for x in dd])
     print dd
     print('time: {}'.format(time.time()-s))
     s = time.time()
     dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
-               periodic=periodic, X2=randx, Y2=randy, Z2=randz)
+               periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
     dr = np.array([x[3] for x in dr])
     print dr
     print('time: {}'.format(time.time()-s))
     s = time.time()
     rr = DD(1, nthreads, rbins, randx, randy, randz,
-                periodic=periodic)
+                periodic=periodic, boxsize=boxsize)
     rr = np.array([x[3] for x in rr])
     print rr
     print('time: {}'.format(time.time()-s))
@@ -146,29 +150,33 @@ def compute_cf(dd, dr, rr, nd, nr, est):
         exit("Estimator '{}' not recognized".format(est))
 
 
-def compute_cf_proj(data, random, nd, nr, rbins, r_cont, proj_type):
+def compute_cf_proj(data, random, nd, nr, rbins, r_cont, proj):
 
-    cosmo = LambdaCDM(H0=70, Om0=0.25, Ode0=0.75)
-    #cosmo = 1 #doesn't matter bc passing cz, but required
+    #cosmo = LambdaCDM(H0=70, Om0=0.25, Ode0=0.75)
+    cosmo = 1 #doesn't matter bc passing cz, but required
 
     datara, datadec, datacz = data.T
     randra, randdec, randcz = random.T
-    #datara = data[0].compute().astype(float)
-    #datadec = data[1].compute().astype(float)
-    #datacz = data[2].compute().astype(float)
 
-    #randra = random[0].compute().astype(float)
-    #randdec = random[1].compute().astype(float)
-    #randcz = random[2].compute().astype(float)
-
+    proj_type = proj
     projfn = None
-    if proj_type=="tophat" or proj_type=="piecewise":
+    if proj=="tophat" or proj_type=="piecewise":
         nprojbins = len(rbins)-1
-    elif proj_type=="powerlaw":
+    elif proj=="powerlaw":
         nprojbins = 3
-    elif proj_type=='generalr':
+    elif proj=='generalr':
         nprojbins = 6
         projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_rsd_norm.dat"
+    elif proj=='linear_spline':
+        nprojbins = len(rbins)-1
+        proj_type = 'generalr'
+        projfn = '../tables/linear_spline.dat'
+        spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 1, projfn)
+    elif proj=='quadratic_spline':
+        nprojbins = len(rbins)-1
+        proj_type = 'generalr'
+        projfn = '../tables/quadratic_spline.dat'
+        spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 2, projfn) 
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
     print "nprojbins:", nprojbins
