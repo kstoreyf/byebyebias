@@ -6,3 +6,4 @@ catalogs/
 .idea
 .DS_store
 tables/
+*.sw*

@@ -39,10 +39,15 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, saveto=None,
         cf = np.array([cfs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
         cf = 1 + cf
         
-        ax[0].plot(r, cf, color=colors[j], label=labels[j], marker=marker, ls=ls)
-
+        if labels[j]: 
+            ax[0].plot(r, cf, color=colors[j], label=labels[j], marker=marker, ls=ls)
+        else:
+            ax[0].plot(r, cf, color=colors[j], alpha=0.2, marker=marker, ls=ls)
         if err and len(rs[j])==len(r_true):
-            ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j])
+            if labels[j]:
+                ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j])
+            else:
+                ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j], alpha=0.2)
 
     ax[0].set_xlabel('r')
     #ax[0].set_ylabel(r'$\xi(r)$')
@@ -128,7 +133,7 @@ def plot_cf(rs, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,
         plt.savefig(saveto)
 
 
-def plot_sim(data, random, zrange=None, saveto=None):
+def plot_sim(data, random, boxsize, zrange=None, saveto=None):
     plt.figure()
     if zrange:
         data = np.array([d for d in data.T if zrange[0]<=d[2]<zrange[1]])
@@ -138,6 +143,12 @@ def plot_sim(data, random, zrange=None, saveto=None):
     plt.scatter(random[0], random[1], s=1, color='cyan', label='random')
     if len(data)>0:
         plt.scatter(data[0], data[1], s=1, color='red', label='data')
-    plt.legend()
+    plt.legend(loc='upper right',framealpha=1)
+    #plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('scaled')
+    plt.xlim(0, boxsize)
+    plt.ylim(0, boxsize)
+    plt.xlabel(r'$x$ (h$^{-1}$Mpc)')
+    plt.ylabel(r'$y$ (h$^{-1}$Mpc)')
     if saveto:
         plt.savefig(saveto)

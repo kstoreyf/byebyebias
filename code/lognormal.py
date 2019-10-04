@@ -20,12 +20,98 @@ from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
 
 
-plot_dir = '../plots/plots_2019-09-30'
 cat_dir = '../catalogs/catalogs_2019-09-30'
 
 
 def main():
+    realizations()
 
+def realizations():
+    boxsize = 750
+    nbar_str = '3e-4'
+    nrealizations = 5
+    seeds = np.arange(nrealizations)
+    tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
+    cat_dir = '../catalogs/cats_lognormal{}'.format(tag)
+
+    data_fn = '{}/cat_lognormal{}.dat'.format(cat_dir, tag)
+    rand_fn = '{}/rand{}_10x.dat'.format(cat_dir, tag)
+    datasky_fn = '{}/catsky_lognormal{}.dat'.format(cat_dir, tag)
+    randsky_fn = '{}/randsky{}_10x.dat'.format(cat_dir, tag)
+    pk_fn = '{}/pk{}.dat'.format(cat_dir, tag)
+    cf_lin_fn = '{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', tag)
+    cf_log_fn = '{}/cf_log_{}{}.npy'.format(cat_dir, 'true', tag)
+    nbar = float(nbar_str)
+    boxsize = float(boxsize)
+
+    redshift = 0
+    cosmo = cosmology.Planck15
+    print("Generating power spectrum")
+    Plin = cosmology.LinearPower(cosmo, redshift, transfer='EisensteinHu')
+
+    pk(Plin, saveto=pk_fn)
+    cf(Plin, log=False, saveto=cf_lin_fn)
+    cf(Plin, log=True, saveto=cf_log_fn)
+
+    random = generate_random(nbar, boxsize, savepos=rand_fn)
+    randomsky = to_sky(random['Position'], cosmo, savepos=randsky_fn)
+
+    for seed in seeds:
+        data_fn = '{}/cat_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
+        datasky_fn = '{}/catsky_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
+        data = generate_data(nbar, boxsize, Plin, seed=seed, savepos=data_fn)
+        datasky = to_sky(data['Position'], cosmo, savepos=datasky_fn)
+
+
+def pk(Plin, saveto=None):
+    print("Power spectrum and correlation function")
+    k = np.logspace(-3, 2, 300)
+    Pk = Plin(k)
+    if saveto:
+        np.save(saveto, [k, Pk])
+    return k, Pk
+
+
+def cf(Plin, log=False, rmin=1, rmax=150, saveto=None):
+    if log:
+        r = np.logspace(np.log10(rmin), np.log10(rmax), 300)
+    else:
+        r = np.linspace(rmin, rmax, 300)
+    CF = nbodykit.cosmology.correlation.CorrelationFunction(Plin)
+    xi = CF(r)#, smoothing=0.0, kmin=10**-2, kmax=10**0)
+    if saveto:
+        np.save(saveto, [r, xi, 'true'])
+    return r, xi
+
+
+def generate_data(nbar, boxsize, Plin, seed=42, savepos=None):
+    b1 = 1.0
+    print("Making data catalog")
+    s = time.time()
+    data = LogNormalCatalog(Plin=Plin, nbar=nbar, BoxSize=boxsize, Nmesh=256, bias=b1, seed=seed)
+    print('time: {}'.format(time.time()-s))
+    nd = data.csize
+    print("Data: {}".format(nd))
+    if savepos:
+        datapos = get_positions(data)
+        np.savetxt(savepos, np.array(datapos).T)
+    return data
+
+
+def generate_random(nbar, boxsize, seed=43, savepos=None):
+    print("Making random catalog")
+    s = time.time()
+    random = nbodykit.source.catalog.uniform.UniformCatalog(10*nbar, boxsize, seed=seed)
+    print('time: {}'.format(time.time()-s))
+    nr = random.csize
+    print("Random: {}".format(nr))
+    if savepos:
+        randompos = get_positions(random)
+        np.savetxt(savepos, np.array(randompos).T)
+    return random
+
+
+def single():
     boxsize = 750
     nbar_str = '3e-4'
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
@@ -87,7 +173,7 @@ def main():
     np.savetxt(randsky_fn, np.array(randomsky).T)
 
 
-def to_sky(pos, cosmo, velocity=None, rsd=False, comoving=True):
+def to_sky(pos, cosmo, velocity=None, rsd=False, comoving=True, savepos=None):
     if rsd:
         if velocity is None:
             raise ValueError("Must provide velocities for RSD! Or set rsd=False.")
@@ -99,7 +185,12 @@ def to_sky(pos, cosmo, velocity=None, rsd=False, comoving=True):
 
     ra = ra.compute().astype(float)
     dec = dec.compute().astype(float)
-    return ra, dec, z
+
+    pos = [ra, dec, z]
+    if savepos:
+        np.savetxt(savepos, np.array(pos).T)
+
+    return pos
 
 
 def get_positions(cat):
