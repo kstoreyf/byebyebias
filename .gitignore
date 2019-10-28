@@ -6,3 +6,5 @@ catalogs/
 .idea
 .DS_store
 tables/
+.ipynb_checkpoints/
+*.sw*

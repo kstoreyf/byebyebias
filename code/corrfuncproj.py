@@ -45,38 +45,38 @@ def counts_smu(ra_data, dec_data, z_data, ra_rand, dec_rand, z_rand, rpbins,
     mumax = losmax
     nmubins = 1
 
-    print 'Computing DD pairs'
+    print('Computing DD pairs')
     start = time.time()
     dd_res_corrfunc, dd_proj, dd_projt = DDsmu_mocks(1, cosmology, nthreads, mumax, nmubins, rpbins, ra_data, dec_data, z_data,
                                    weights1=weights_data, is_comoving_dist=comoving, verbose=verbose,
                                    weight_type=weight_type, isa=isa, proj_type=proj_type, nprojbins=nprojbins, projfn=projfn)
     end = time.time()
-    print "Time DD pairs:", end - start
-    print "DD:", dd_proj
-    print dd_res_corrfunc
+    print("Time DD pairs:", end - start)
+    print("DD:", dd_proj)
+    print(dd_res_corrfunc)
 
     #TODO: allow cross-correlations
-    print 'Computing DR pairs'
+    print('Computing DR pairs')
     start = time.time()
     dr_res_corrfunc, dr_proj, dr_projt = DDsmu_mocks(0, cosmology, nthreads, mumax, nmubins, rpbins, ra_data, dec_data, z_data,
                                         RA2=ra_rand, DEC2=dec_rand, CZ2=z_rand, weights1=weights_data,
                                    weights2=weights_rand, is_comoving_dist=comoving, verbose=verbose,
                                    weight_type=weight_type, isa=isa, proj_type=proj_type, nprojbins=nprojbins, projfn=projfn)
     end = time.time()
-    print "Time DR pairs:", end - start
-    print "DR:", dr_proj
-    print dr_res_corrfunc
+    print("Time DR pairs:", end - start)
+    print("DR:", dr_proj)
+    print(dr_res_corrfunc)
 
-    print 'Computing RR pairs'
+    print('Computing RR pairs')
     start = time.time()
     rr_res_corrfunc, rr_proj, rr_projt = DDsmu_mocks(1, cosmology, nthreads, mumax, nmubins, rpbins, ra_rand, dec_rand, z_rand,
                                    weights1=weights_rand, is_comoving_dist=comoving, verbose=verbose,
                                    weight_type=weight_type, isa=isa, proj_type=proj_type, nprojbins=nprojbins, projfn=projfn)
     end = time.time()
-    print "Time RR pairs:", end - start
-    print "RR:", rr_proj
-    print "QQ:", rr_projt
-    print rr_res_corrfunc
+    print("Time RR pairs:", end - start)
+    print("RR:", rr_proj)
+    print("QQ:", rr_projt)
+    print(rr_res_corrfunc)
 
     return dd_proj, dr_proj, rr_proj, rr_projt, \
            dd_res_corrfunc, dr_res_corrfunc, rr_res_corrfunc
