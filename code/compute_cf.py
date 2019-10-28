@@ -36,15 +36,15 @@ def main():
 
 def multi():
     boxsize = 750
-    nbar_str = '3e-4'
+    nbar_str = '1e-5'
     #nbar_str = '3e-4'
     #projs = ['quadratic_spline']
+    #proj_tags = ['quadratic']
     projs = ['dcosmo']
-	proj_tags = ['dcosmo']
-	#proj_tags = ['quadratic']
+    proj_tags = ['dcosmo_test']
 
-  # TODO: make sure cosmo is aligned with sim loaded in
-    kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':cosmology.Planck15}
+    # TODO: make sure cosmo is aligned with sim loaded in
+    kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':nbodykit.cosmology.Planck15}
 
     nrealizations = 1
     seeds = np.arange(nrealizations)
@@ -71,7 +71,7 @@ def multi():
     nbins = 16
     rbins = np.linspace(rmin, rmax, nbins)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
-    r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag))
+    r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag))#, allow_pickle=True)
     if log:
         rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
         rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
@@ -82,7 +82,7 @@ def multi():
     
     rr_projs, qq_projs = [], []
     for i in range(len(projs)):
-        rr_proj, qq_proj = counts_cf_proj_auto(randomsky, rbins, r_lin, projs[i], qq=True)
+        rr_proj, qq_proj = counts_cf_proj_auto(randomsky, rbins, r_lin, projs[i], qq=True, **kwargs)
         rr_projs.append(rr_proj)
         qq_projs.append(qq_proj)
 
@@ -102,9 +102,9 @@ def multi():
         for i in range(len(projs)):
            
             proj = projs[i]
-            dd_proj = counts_cf_proj_auto(datasky, rbins, r_lin, proj, qq=False)
-            dr_proj = counts_cf_proj_cross(datasky, randomsky, rbins, r_lin, proj)
-            r_cont, xi_proj = compute_cf_proj(dd_proj, dr_proj, rr_projs[i], qq_projs[i], nd, nr, rbins, r_lin, proj)
+            dd_proj = counts_cf_proj_auto(datasky, rbins, r_lin, proj, qq=False, **kwargs)
+            dr_proj = counts_cf_proj_cross(datasky, randomsky, rbins, r_lin, proj, **kwargs)
+            r_cont, xi_proj = compute_cf_proj(dd_proj, dr_proj, rr_projs[i], qq_projs[i], nd, nr, rbins, r_lin, proj, **kwargs)
             np.save('{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, proj_tags[i], cat_tag, seed), [r_lin, xi_proj, proj])
 
 
@@ -180,7 +180,7 @@ def counts_corrfunc_auto(cat, rbins, boxsize):
     dd = DD(1, nthreads, rbins, X1=x, Y1=y, Z1=z,
                periodic=periodic, boxsize=boxsize)
     dd = np.array([x[3] for x in dd])
-    print dd
+    print(dd)
     print('time: {}'.format(time.time()-s))
     return dd
 
@@ -194,38 +194,38 @@ def counts_corrfunc_cross(data, random, rbins, boxsize):
     dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
                periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
     dr = np.array([x[3] for x in dr])
-    print dr
+    print(dr)
     print('time: {}'.format(time.time()-s))
     return dr
 
 
 def counts_corrfunc_3d(data, random, rbins, boxsize):
-	print(data.shape)
-	datax, datay, dataz = data.T
-	randx, randy, randz = random.T
-	
-	periodic = True
-	print('Starting counts')
-	s = time.time()
-	dd = DD(1, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
-			   periodic=periodic, boxsize=boxsize)
-	dd = np.array([x[3] for x in dd])
-	print(dd)
-	print('time: {}'.format(time.time()-s))
-	s = time.time()
-	dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
-			   periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
-	dr = np.array([x[3] for x in dr])
-	print(dr)
-	print('time: {}'.format(time.time()-s))
-	s = time.time()
-	rr = DD(1, nthreads, rbins, randx, randy, randz,
-				periodic=periodic, boxsize=boxsize)
-	rr = np.array([x[3] for x in rr])
-	print(rr)
-	print('time: {}'.format(time.time()-s))
+    print(data.shape)
+    datax, datay, dataz = data.T
+    randx, randy, randz = random.T
+    
+    periodic = True
+    print('Starting counts')
+    s = time.time()
+    dd = DD(1, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
+               periodic=periodic, boxsize=boxsize)
+    dd = np.array([x[3] for x in dd])
+    print(dd)
+    print('time: {}'.format(time.time()-s))
+    s = time.time()
+    dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
+               periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
+    dr = np.array([x[3] for x in dr])
+    print(dr)
+    print('time: {}'.format(time.time()-s))
+    s = time.time()
+    rr = DD(1, nthreads, rbins, randx, randy, randz,
+                periodic=periodic, boxsize=boxsize)
+    rr = np.array([x[3] for x in rr])
+    print(rr)
+    print('time: {}'.format(time.time()-s))
 
-	return dd, dr, rr
+    return dd, dr, rr
 
 
 def compute_cf(dd, dr, rr, nd, nr, est):
@@ -325,15 +325,14 @@ def compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins, r_cont, proj, **kwargs):
     proj_type, nprojbins, projfn = get_proj_parameters(proj, rbins=rbins, **kwargs)
     # Note: dr twice because cross-correlations will be possible
     amps = compute_amps(nprojbins, nd, nd, nr, nr, dd, dr, dr, rr, qq)
-    print 'Computed amplitudes'
+    print('Computed amplitudes')
 
     amps = np.array(amps)
 
     rbins = np.array(rbins)
     xi_proj = evaluate_xi(nprojbins, amps, len(r_cont), r_cont, len(rbins), rbins, proj_type, projfn=projfn)
-    print "Computed xi"
+    print("Computed xi")
     return r_cont, xi_proj
->>>>>>> 1286bccc83a82e6b3226d3022a364a42cba822dc
 
 
 
@@ -347,7 +346,7 @@ def get_proj_parameters(proj, rbins=None):
     elif proj=='generalr':
         nprojbins = 6
         projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_rsd_norm.dat"
-	elif proj=='dcosmo':
+    elif proj=='dcosmo':
         proj_type = 'generalr'
         #params = ['Omega_cdm', 'Omega_b', 'h']
         projfn = '../tables/dcosmo.dat'
@@ -364,22 +363,22 @@ def get_proj_parameters(proj, rbins=None):
         spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 2, projfn)
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
-    print "nprojbins:", nprojbins
+    print("nprojbins:", nprojbins)
     return proj_type, nprojbins, projfn
 
 
 def to_sky(pos, cosmo, velocity=None, rsd=False, comoving=True):
-	if rsd:
-		if velocity is None:
-			raise ValueError("Must provide velocities for RSD! Or set rsd=False.")
-		ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo, velocity=velocity, observer=[0, 0, 0], zmax=100.0, frame='icrs')
-	else:
-		ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo)
+    if rsd:
+        if velocity is None:
+            raise ValueError("Must provide velocities for RSD! Or set rsd=False.")
+        ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo, velocity=velocity, observer=[0, 0, 0], zmax=100.0, frame='icrs')
+    else:
+        ra, dec, z = nbodykit.transform.CartesianToSky(pos, cosmo)
 
-	if comoving:
-		z = cosmo.comoving_distance(z)
-	return ra, dec, z
+    if comoving:
+        z = cosmo.comoving_distance(z)
+    return ra, dec, z
 
 
 if __name__=='__main__':
-	main()
+    main()

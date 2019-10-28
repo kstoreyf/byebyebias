@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import time
+import os
 
 from nbodykit.lab import *
 import nbodykit
@@ -20,7 +21,7 @@ from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
 
 
-cat_dir = '../catalogs/catalogs_2019-09-30'
+cat_dir = '../catalogs/catalogs_2019-10-27'
 
 
 def main():
@@ -28,11 +29,13 @@ def main():
 
 def realizations():
     boxsize = 750
-    nbar_str = '3e-4'
-    nrealizations = 5
+    nbar_str = '1e-5'
+    nrealizations = 1
     seeds = np.arange(nrealizations)
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
     cat_dir = '../catalogs/cats_lognormal{}'.format(tag)
+    if not os.path.isdir(cat_dir):
+        os.makedirs(cat_dir)
 
     data_fn = '{}/cat_lognormal{}.dat'.format(cat_dir, tag)
     rand_fn = '{}/rand{}_10x.dat'.format(cat_dir, tag)

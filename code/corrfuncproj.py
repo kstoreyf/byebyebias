@@ -105,14 +105,14 @@ def counts_smu_auto(ra, dec, z, rpbins,
     mumax = losmax
     nmubins = 1
 
-    print 'Computing auto pairs'
+    print('Computing auto pairs')
     start = time.time()
     dd_res_corrfunc, dd_proj, dd_projt = DDsmu_mocks(1, cosmology, nthreads, mumax, nmubins, rpbins, ra, dec, z,
                                    weights1=weights, is_comoving_dist=comoving, verbose=verbose,
                                    weight_type=weight_type, isa=isa, proj_type=proj_type, nprojbins=nprojbins, projfn=projfn)
     end = time.time()
-    print "Time auto pairs:", end - start
-    print "pairs:", dd_proj
+    print("Time auto pairs:", end - start)
+    print("pairs:", dd_proj)
     if qq:
         return dd_proj, dd_res_corrfunc, dd_projt
     else:
@@ -148,13 +148,13 @@ def counts_smu_cross(ra_data, dec_data, z_data, ra_rand, dec_rand, z_rand, rpbin
     mumax = losmax
     nmubins = 1
 
-    print 'Computing cross pairs'
+    print('Computing cross pairs')
     start = time.time()
     dr_res_corrfunc, dr_proj, dr_projt = DDsmu_mocks(0, cosmology, nthreads, mumax, nmubins, rpbins, ra_data, dec_data, z_data,
                                         RA2=ra_rand, DEC2=dec_rand, CZ2=z_rand, weights1=weights_data,
                                    weights2=weights_rand, is_comoving_dist=comoving, verbose=verbose,
                                    weight_type=weight_type, isa=isa, proj_type=proj_type, nprojbins=nprojbins, projfn=projfn)
     end = time.time()
-    print "Time cross pairs:", end - start
-    print "pairs:", dr_proj
+    print("Time cross pairs:", end - start)
+    print("pairs:", dr_proj)
     return dr_proj, dr_res_corrfunc
