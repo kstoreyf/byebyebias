@@ -133,6 +133,7 @@ def plot_cf(rs, cfs, ests, cftrue, r_cont, cftrue_cont, saveto=None,
 		plt.savefig(saveto)
 
 
+<<<<<<< HEAD
 def plot_sim(data, random, zrange=None, saveto=None):
 	plt.figure()
 	if zrange:
@@ -149,3 +150,24 @@ def plot_sim(data, random, zrange=None, saveto=None):
 
 def rmse(y, y_pred):
 	return np.sqrt(np.mean(np.square(y - y_pred)))
+=======
+def plot_sim(data, random, boxsize, zrange=None, saveto=None):
+    plt.figure()
+    if zrange:
+        data = np.array([d for d in data.T if zrange[0]<=d[2]<zrange[1]])
+        data = data.T
+        random = np.array([r for r in random.T if zrange[0]<=r[2]<zrange[1]])
+        random = random.T
+    plt.scatter(random[0], random[1], s=1, color='cyan', label='random')
+    if len(data)>0:
+        plt.scatter(data[0], data[1], s=1, color='red', label='data')
+    plt.legend(loc='upper right',framealpha=1)
+    #plt.gca().set_aspect('equal', adjustable='box')
+    plt.axis('scaled')
+    plt.xlim(0, boxsize)
+    plt.ylim(0, boxsize)
+    plt.xlabel(r'$x$ (h$^{-1}$Mpc)')
+    plt.ylabel(r'$y$ (h$^{-1}$Mpc)')
+    if saveto:
+        plt.savefig(saveto)
+>>>>>>> 1286bccc83a82e6b3226d3022a364a42cba822dc
