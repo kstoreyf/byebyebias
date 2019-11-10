@@ -30,9 +30,12 @@ def main():
 def realizations():
     boxsize = 750
     nbar_str = '1e-5'
-    nrealizations = 1
+    nrealizations = 10
     seeds = np.arange(nrealizations)
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
+    
+    print("Making lognormal mocks for {}".format(tag))
+    
     cat_dir = '../catalogs/cats_lognormal{}'.format(tag)
     if not os.path.isdir(cat_dir):
         os.makedirs(cat_dir)
@@ -56,14 +59,16 @@ def realizations():
     cf(Plin, log=False, saveto=cf_lin_fn)
     cf(Plin, log=True, saveto=cf_log_fn)
 
-    random = generate_random(nbar, boxsize, savepos=rand_fn)
-    randomsky = to_sky(random['Position'], cosmo, savepos=randsky_fn)
+    if not os.path.isfile(rand_fn):
+        random = generate_random(nbar, boxsize, savepos=rand_fn)
+        randomsky = to_sky(random['Position'], cosmo, savepos=randsky_fn)
 
     for seed in seeds:
         data_fn = '{}/cat_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
         datasky_fn = '{}/catsky_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
-        data = generate_data(nbar, boxsize, Plin, seed=seed, savepos=data_fn)
-        datasky = to_sky(data['Position'], cosmo, savepos=datasky_fn)
+        if not os.path.isfile(data_fn):
+            data = generate_data(nbar, boxsize, Plin, seed=seed, savepos=data_fn)
+            datasky = to_sky(data['Position'], cosmo, savepos=datasky_fn)
 
 
 def pk(Plin, saveto=None):
