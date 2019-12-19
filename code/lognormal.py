@@ -29,8 +29,8 @@ def main():
 
 def realizations():
     boxsize = 750
-    nbar_str = '1e-5'
-    nrealizations = 10
+    nbar_str = '3e-4'
+    nrealizations = 100
     seeds = np.arange(nrealizations)
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
     

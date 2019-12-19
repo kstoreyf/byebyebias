@@ -1,6 +1,6 @@
 #!/bin/bash
-#PBS -N compcf
-#PBS -l walltime=12:00:00
+#PBS -N compcf_tophat44_n100_nbar1e-4
+#PBS -l walltime=72:00:00
 #PBS -l nodes=1:ppn=24
 #PBS -m ae
 #PBS -j oe
@@ -14,4 +14,5 @@ echo -n 'Job is running on node '; cat $PBS_NODEFILE
 source /home/users/ksf293/miniconda3/etc/profile.d/conda.sh
 conda activate nbodykit3
 python compute_cf.py
+#python lognormal.py
 echo 'done'

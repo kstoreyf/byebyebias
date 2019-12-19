@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'crimson', 'linear spline':'red', 'cosmo deriv':'purple', 'triangle':'crimson'}
 
 def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=None,
-            log=False, err=False, zoom=False):
+            log=False, err=False, zoom=False, error_regions=None):
 
     if not alphas:
         alphas = np.ones(len(colors))
@@ -34,6 +34,10 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
 
         r = np.array([rs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
         cf = np.array([cfs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
+        lower = error_regions[j][0]
+        upper = error_regions[j][1]
+        lower = np.array([lower[k] for k in range(len(rs[j])) if rs[j][k]>xmin])
+        upper = np.array([upper[k] for k in range(len(rs[j])) if rs[j][k]>xmin])
         #cf = 1 + cf
         #cf = r**2 * cf
 
@@ -52,6 +56,7 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
         
         ax[0].plot(r, cf, color=colors[j], alpha=alphas[j], 
                             label=label, marker=marker, ls=ls)
+        ax[0].fill_between(r, lower,  upper, color='gray', alpha=0.3)
 
         if err and len(rs[j])==len(r_true):
             ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j], alpha=alphas[j])
