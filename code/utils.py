@@ -15,3 +15,9 @@ def get_color(pt):
 			return color_dict[k]
 	else:
 		return 'blue'
+
+
+def partial_derivative(f1, f2, dv):
+    df = f2-f1
+    deriv = df/dv
+    return deriv

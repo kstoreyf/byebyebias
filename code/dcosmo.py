@@ -1,6 +1,8 @@
 import numpy as np
 from nbodykit.lab import cosmology
 
+from utils import partial_derivative
+
 
 def write_bases(rmin, rmax,  saveto, ncont=300, params=None, cosmo_base=None):
 	if not cosmo_base or if not params:
