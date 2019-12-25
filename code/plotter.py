@@ -8,58 +8,87 @@ from matplotlib import pyplot as plt
 color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'crimson', 'linear spline':'red', 'cosmo deriv':'purple', 'triangle':'crimson'}
 
 def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=None,
-            log=False, err=False, zoom=False):
+            log=False, err=False, zoom=False, error_regions=None, xlim=None, cont=True):
 
     if not alphas:
         alphas = np.ones(len(colors))
     print('plotting')
     if err:
-        fig, ax = plt.subplots(2, 1, figsize=(8,8), gridspec_kw={'height_ratios': [2, 1]})
+        fig, ax = plt.subplots(2, 1, figsize=(8,8), gridspec_kw={'height_ratios': [2, 1]}, sharex=True)
+        plt.subplots_adjust(wspace=0, hspace=0)
     else:
         plt.figure(figsize=(8,6))
         ax = plt.gca()
         ax = [ax]
     
-    if log:
-        xmin = 0
+    if cont:
+        ls = '-'
+        marker = 'None'
     else:
-        xmin = 40
-    r_t = np.array([r_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
-    cf_t = np.array([cf_true[k] for k in range(len(r_true)) if r_true[k]>xmin])
+        ls = 'None'
+        marker = 'd'
+
+    if xlim is None:
+        if log:
+            xmin = 0
+        else:
+            xmin = 40
+        xmax = max(np.flatten(rs))
+    else:
+        xmin, xmax = xlim
+    r_t = np.array([r_true[k] for k in range(len(r_true)) if xmin<=r_true[k]<xmax])
+    cf_t = np.array([cf_true[k] for k in range(len(r_true)) if xmin<=r_true[k]<xmax])
     #cf_t = 1 + cf_t
     #cf_t = r_t**2 * cf_t
-    ax[0].plot(r_t, cf_t, color='k', label='True')
+    ax[0].plot(r_t, cf_t, color='k', label='True', ls=ls, marker=marker)
     
+    offset = 0
     for j in range(len(rs)):
-
-        r = np.array([rs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
-        cf = np.array([cfs[j][k] for k in range(len(rs[j])) if rs[j][k]>xmin])
+        offset += 0.5
+         
+        r = np.array([rs[j][k] for k in range(len(rs[j])) if xmin<=rs[j][k]<xmax])
+        cf = np.array([cfs[j][k] for k in range(len(rs[j])) if xmin<=rs[j][k]<xmax])
+        lower = error_regions[j][0]
+        upper = error_regions[j][1]
+        lower = np.array([lower[k] for k in range(len(rs[j])) if xmin<=rs[j][k]<xmax])
+        upper = np.array([upper[k] for k in range(len(rs[j])) if xmin<=rs[j][k]<xmax])
         #cf = 1 + cf
         #cf = r**2 * cf
 
         if len(rs[j])==len(r_true):
-            marker = None
-            ls = '-'
+            #marker = None
+            #ls = '-'
             rmserr = rmse(cf, cf_t)
             if labels[j] is not None:
                 label = '{} (rmse: {:.2e})'.format(labels[j], rmserr)
             else:
                 label = labels[j]
         else:
-            marker = 'o'
-            ls = 'None'
+            #marker = 'o'
+            #ls = 'None'
             label = labels[j]
         
         ax[0].plot(r, cf, color=colors[j], alpha=alphas[j], 
                             label=label, marker=marker, ls=ls)
 
+        if cont:
+            ax[0].fill_between(r, lower,  upper, color=colors[j], alpha=0.1)
+        else:
+            ax[0].errorbar(r+offset, cf, yerr=[cf-lower, upper-cf], color=colors[j], ls='None', alpha=0.5)
+
         if err and len(rs[j])==len(r_true):
-            ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j], alpha=alphas[j])
+            #ax[1].plot(r, (cf-cf_t)/cf_t, color=colors[j], alpha=alphas[j])
+            ax[1].plot(r, cf-cf_t, color=colors[j], alpha=alphas[j], marker=marker, ls=ls)
+            if cont:
+                ax[1].fill_between(r, upper-cf, lower-cf, color=colors[j], alpha=0.1)
+            else:
+                ax[1].errorbar(r+offset, cf-cf_t, yerr=[cf-lower, upper-cf], color=colors[j], ls='None', alpha=0.5)
             #ax[1].plot(r, cf/cf_t, color=colors[j], alpha=alphas[j])
 
-    ax[0].set_xlabel('r')
+    #ax[0].set_xlabel('r')
     #ax[0].set_ylabel(r'$\xi(r)$')  
     ax[0].set_ylabel(r'$\xi(r)$')
+    ax[0].set_xlim(xmin, xmax)
     
     if zoom:
         ax[0].set_ylim(-0.05, 0.05)
@@ -78,8 +107,9 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
         ax[1].axhline(0, color='k')
         ax[1].set_xlabel('r')
         #ax[1].set_ylabel(r'($\xi-\xi_{true})/\xi_{true}$')
-        ax[1].set_ylabel('fractional error')
-        ax[1].set_ylim(-5, 5)
+        #ax[1].set_ylabel('fractional error')
+        ax[1].set_ylabel(r'$\xi(r)$ - $\xi_{true}(r)$')
+        #ax[1].set_ylim(-5, 5)
 
     ax[0].legend()
 

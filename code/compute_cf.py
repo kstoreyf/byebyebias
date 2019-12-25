@@ -17,6 +17,8 @@ from astropy import units as u
 import plotter
 import corrfuncproj
 import spline
+import dcosmo
+import kernel 
 
 from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
@@ -30,31 +32,47 @@ color_dict = {'True':'black', 'tophat':'blue', 'LS': 'orange', 'piecewise':'red'
 
 
 def main():
-
+    print("Go!")
     multi()
 
 
 def multi():
+    nrealizations = 10
     boxsize = 750
-    nbar_str = '1e-5'
+    nbar_str = '3e-4'
     #nbar_str = '3e-4'
+    nbins = 22
     #projs = ['quadratic_spline']
-    #proj_tags = ['quadratic']
-    projs = ['dcosmo']
-    proj_tags = ['dcosmo_test']
-
+    #proj_tags = ['quadratic_n{:d}'.format(nbins)]
+    projs = ['tophat']
+    proj_tags = ['tophat_n{:d}'.format(nbins)]
+    #projs = ['gaussian_kernel']
+    #proj_tags = ['gaussian_kernel']
+    #py_str = '_py2'
+    compute_standard = False # also compute the standard estimator
+    py_str = ''
+    if 'py2' in py_str:
+        allow_pickle = False
+    else:
+        allow_pickle = True
+    
+    # for dcosmo only
     # TODO: make sure cosmo is aligned with sim loaded in
-    kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':nbodykit.cosmology.Planck15}
+    kwargs = {}
+    #kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
 
-    nrealizations = 1
     seeds = np.arange(nrealizations)
-    cat_tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
+    cat_tag = '_L{}_nbar{}{}'.format(boxsize, nbar_str, py_str)
+   
+    tagstr = ','.join(proj_tags)
+    print("Running box {} for projections {}".format(cat_tag[1:], tagstr))
+    
     cat_dir = '../catalogs/cats_lognormal{}'.format(cat_tag)
     result_dir = '../results/results_lognormal{}'.format(cat_tag)
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
     log = False
-
+    
     # randoms
     rand_fn = '{}/rand{}_10x.dat'.format(cat_dir, cat_tag)
     random = np.loadtxt(rand_fn)
@@ -68,24 +86,48 @@ def multi():
     else:
         rmin = 40
     rmax = 150
-    nbins = 16
-    rbins = np.linspace(rmin, rmax, nbins)
+    #nbins = 16
+   
+    # Load True CF (input to catalog) 
+    rbins = np.linspace(rmin, rmax, nbins+1)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
-    r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag))#, allow_pickle=True)
+    r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag), allow_pickle=allow_pickle)
     if log:
         rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
         rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
         r_log, _, _ = np.load('{}/cf_log_{}{}.npy'.format(cat_dir, 'true', cat_tag))
 
-    ### random
-    rr = counts_corrfunc_auto(random, rbins, boxsize)
-    
+    ### STANDARD RANDOMS
+    ### check if random counts already exist for tag, if not then count
+    if compute_standard:
+        save_rrstandard_fn = '{}/rr_qq_standard_lin_{}{}.npy'.format(result_dir, proj_tags[i], cat_tag)
+        if not os.path.isfile(save_rrstandard_fn):
+            print("Computing randoms for standard")
+            rr = counts_corrfunc_auto(random, rbins, boxsize)
+            np.save(save_rrstandard_fn, rr)
+            print("Saved standard randoms to {}".format(save_rrstandard_fn))
+        else:
+            print("Loading standard randoms from {}".format(save_rrstandard_fn))
+            rr = np.load(save_rrstandard_fn, allow_pickle=allow_pickle)
+
+    ### PROJECTION RANDOMS
+    ### check if random counts already exist for tag, if not then count
     rr_projs, qq_projs = [], []
     for i in range(len(projs)):
-        rr_proj, qq_proj = counts_cf_proj_auto(randomsky, rbins, r_lin, projs[i], qq=True, **kwargs)
+        save_rrproj_fn = '{}/rr_qq_proj_lin_{}{}.npy'.format(result_dir, proj_tags[i], cat_tag)
+        if not os.path.isfile(save_rrproj_fn):
+            print("Computing randoms for projection {}".format(proj_tags[i]))
+            rr_proj, qq_proj = counts_cf_proj_auto(randomsky, rbins, r_lin, projs[i], qq=True, **kwargs)
+            np.save(save_rrproj_fn, [rr_proj, qq_proj])
+            print("Saved projection randoms to {}".format(save_rrproj_fn))
+        else:
+            print("Loading projection randoms from {}".format(save_rrproj_fn))
+            rr_proj, qq_proj = np.load(save_rrproj_fn, allow_pickle=allow_pickle)
         rr_projs.append(rr_proj)
         qq_projs.append(qq_proj)
 
+    ### COMPUTE CFs
+    ### for each seed for each projection
     for seed in seeds:
 
         data_fn = '{}/cat_lognormal{}_seed{}.dat'.format(cat_dir, cat_tag, seed)
@@ -94,31 +136,43 @@ def multi():
         datasky_fn = '{}/catsky_lognormal{}_seed{}.dat'.format(cat_dir, cat_tag, seed)
         datasky = np.loadtxt(datasky_fn)
 
-        dd = counts_corrfunc_auto(data, rbins, boxsize)
-        dr = counts_corrfunc_cross(data, random, rbins, boxsize)
-        xi_stan = compute_cf(dd, dr, rr, nd, nr, 'ls')
-        np.save('{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, 'standard', cat_tag, seed), [rbins_avg, xi_stan, 'standard'])
-
+        if compute_standard:
+            save_standard_fn = '{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, 'standard', cat_tag, seed)
+            if not os.path.isfile(save_standard_fn):
+                dd = counts_corrfunc_auto(data, rbins, boxsize)
+                dr = counts_corrfunc_cross(data, random, rbins, boxsize)
+                xi_stan = compute_cf(dd, dr, rr, nd, nr, 'ls')
+                np.save('{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, 'standard', cat_tag, seed), [rbins_avg, xi_stan, 'standard'])
+            else:
+                print("{} already exists!".format(save_standard_fn))
+    
         for i in range(len(projs)):
-           
-            proj = projs[i]
-            dd_proj = counts_cf_proj_auto(datasky, rbins, r_lin, proj, qq=False, **kwargs)
-            dr_proj = counts_cf_proj_cross(datasky, randomsky, rbins, r_lin, proj, **kwargs)
-            r_cont, xi_proj = compute_cf_proj(dd_proj, dr_proj, rr_projs[i], qq_projs[i], nd, nr, rbins, r_lin, proj, **kwargs)
-            np.save('{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, proj_tags[i], cat_tag, seed), [r_lin, xi_proj, proj])
-
+            print("COMPUTING: Proj {}, cat_tag {}, seed {}".format(proj_tags[i], cat_tag, seed))
+            save_fn = '{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, proj_tags[i], cat_tag, seed)
+                   
+            if not os.path.isfile(save_fn):
+                start = time.time()
+                proj = projs[i]
+                dd_proj = counts_cf_proj_auto(datasky, rbins, r_lin, proj, qq=False, **kwargs)
+                dr_proj = counts_cf_proj_cross(datasky, randomsky, rbins, r_lin, proj, **kwargs)
+                r_proj, xi_proj, amps_proj = compute_cf_proj(dd_proj, dr_proj, rr_projs[i], qq_projs[i], nd, nr, rbins, r_lin, proj, **kwargs)
+                np.save(save_fn, [r_proj, xi_proj, amps_proj, proj])
+                end = time.time()
+                print("Saved to {}".format(save_fn))
+                print("TIME FOR PROJCF: {} s".format(end-start))
+            else:
+                print("{} already exists!".format(save_fn))
 
 
 def single():
 
     boxsize = 750
-    nbar_str = '3e-4'
-    projs = ['quadratic_spline']
+    nbar_str = '1e-4'
+    #projs = ['gaussian_kernel']
+    #projs = ['quadratic_spline']
     #projs = ['tophat', 'piecewise']
     #projs = []
     cat_tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
-    tag = '_nbins8'+cat_tag
-    log = False
 
     print("Get data")
     cat_fn = '{}/cat_lognormal{}.dat'.format(cat_dir, cat_tag)
@@ -163,19 +217,19 @@ def single():
     for proj in projs:
         print("LIN PROJ")
         dd, dr, rr, qq = counts_cf_proj(datasky, randomsky, rbins, r_lin, proj)
-        r_cont, xi_proj = compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins, r_cont, proj)
-        np.save('{}/cf_lin_{}{}.npy'.format(result_dir, proj, tag), [r_lin, xi_proj, proj])
+        r_cont, xi_proj, amps = compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins, r_cont, proj)
+        np.save('{}/cf_lin_{}{}.npy'.format(result_dir, proj, tag), [r_lin, xi_proj, amps, proj])
         if log:
             print("LOG PROJ")
             dd, dr, rr, qq = counts_cf_proj(datasky, randomsky, rbins_log, r_log, proj)
-            r_cont_log, xi_proj_log = compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins_log, r_cont_log, proj)
-            np.save('{}/cf_log_{}{}.npy'.format(result_dir, proj, tag), [r_log, xi_proj_log, proj])
+            r_cont_log, xi_proj_log, amps_log = compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins_log, r_cont_log, proj)
+            np.save('{}/cf_log_{}{}.npy'.format(result_dir, proj, tag), [r_log, xi_proj_log, amps_log, proj])
         
 
 def counts_corrfunc_auto(cat, rbins, boxsize):
     x, y, z = cat.T
     periodic = False
-    print('Starting counts')
+    print('Starting auto counts')
     s = time.time()
     dd = DD(1, nthreads, rbins, X1=x, Y1=y, Z1=z,
                periodic=periodic, boxsize=boxsize)
@@ -190,7 +244,7 @@ def counts_corrfunc_cross(data, random, rbins, boxsize):
     periodic = False
     datax, datay, dataz = data.T
     randx, randy, randz = random.T
-    
+    print("Starting cross counts")
     dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
                periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
     dr = np.array([x[3] for x in dr])
@@ -210,19 +264,19 @@ def counts_corrfunc_3d(data, random, rbins, boxsize):
     dd = DD(1, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
                periodic=periodic, boxsize=boxsize)
     dd = np.array([x[3] for x in dd])
-    print(dd)
+    print('DD:',dd)
     print('time: {}'.format(time.time()-s))
     s = time.time()
     dr = DD(0, nthreads, rbins, X1=datax, Y1=datay, Z1=dataz,
                periodic=periodic, X2=randx, Y2=randy, Z2=randz, boxsize=boxsize)
     dr = np.array([x[3] for x in dr])
-    print(dr)
+    print('DR:',dr)
     print('time: {}'.format(time.time()-s))
     s = time.time()
     rr = DD(1, nthreads, rbins, randx, randy, randz,
                 periodic=periodic, boxsize=boxsize)
     rr = np.array([x[3] for x in rr])
-    print(rr)
+    print('RR:',rr)
     print('time: {}'.format(time.time()-s))
 
     return dd, dr, rr
@@ -321,22 +375,27 @@ def counts_cf_proj(data, random, rbins, r_cont, proj, **kwargs):
 
 
 def compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins, r_cont, proj, **kwargs):
+    if 'kernel' in proj:
+        r_proj = 0.5*(rbins[1:]+rbins[:-1])
+        print('rproj', len(r_proj))
+        xi_proj = compute_cf(dd, dr, rr, nd, nr, 'ls')
+    else:
+        r_proj = r_cont
+        proj_type, nprojbins, projfn = get_proj_parameters(proj, rbins=rbins, **kwargs)
+        # Note: dr twice because cross-correlations will be possible
+        amps = compute_amps(nprojbins, nd, nd, nr, nr, dd, dr, dr, rr, qq)
+        print('Computed amplitudes')
 
-    proj_type, nprojbins, projfn = get_proj_parameters(proj, rbins=rbins, **kwargs)
-    # Note: dr twice because cross-correlations will be possible
-    amps = compute_amps(nprojbins, nd, nd, nr, nr, dd, dr, dr, rr, qq)
-    print('Computed amplitudes')
+        amps = np.array(amps)
 
-    amps = np.array(amps)
-
-    rbins = np.array(rbins)
-    xi_proj = evaluate_xi(nprojbins, amps, len(r_cont), r_cont, len(rbins), rbins, proj_type, projfn=projfn)
-    print("Computed xi")
-    return r_cont, xi_proj
+        rbins = np.array(rbins)
+        xi_proj = evaluate_xi(nprojbins, amps, len(r_cont), r_cont, len(rbins), rbins, proj_type, projfn=projfn)
+        print("Computed xi")
+    return r_proj, xi_proj, amps
 
 
 
-def get_proj_parameters(proj, rbins=None):
+def get_proj_parameters(proj, rbins=None, **kwargs):
     proj_type = proj
     projfn = None
     if proj=="tophat" or proj_type=="piecewise":
@@ -344,13 +403,14 @@ def get_proj_parameters(proj, rbins=None):
     elif proj=="powerlaw":
         nprojbins = 3
     elif proj=='generalr':
-        nprojbins = 6
-        projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_rsd_norm.dat"
+        nprojbins = 3
+        #projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_rsd_norm.dat"
+        projfn = "/home/users/ksf293/vectorizedEstimator/tables/dcosmos_norm.dat"
     elif proj=='dcosmo':
         proj_type = 'generalr'
         #params = ['Omega_cdm', 'Omega_b', 'h']
         projfn = '../tables/dcosmo.dat'
-        nprojbins = dcosmo.write_bases(rbins[0], rbins[-1], projfn, **kwargs)
+        nprojbins, _ = dcosmo.write_bases(rbins[0], rbins[-1], projfn, **kwargs)
     elif proj=='linear_spline':
         nprojbins = len(rbins)-1
         proj_type = 'generalr'
@@ -361,6 +421,11 @@ def get_proj_parameters(proj, rbins=None):
         proj_type = 'generalr'
         projfn = '../tables/quadratic_spline.dat'
         spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 2, projfn)
+    elif proj=='gaussian_kernel':
+        nprojbins = len(rbins)-1
+        projfn = '../tables/gaussian_kernel.dat'
+        ncont = len(rbins)-1
+        nprojbins, _ = kernel.write_bases(rbins[0], rbins[-1], projfn, ncont=ncont)
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
     print("nprojbins:", nprojbins)

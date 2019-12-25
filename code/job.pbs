@@ -1,6 +1,6 @@
 #!/bin/bash
-#PBS -N nbar1e-5
-#PBS -l walltime=12:00:00
+#PBS -N compcf_tophat22_n10_nbar3e-4
+#PBS -l walltime=72:00:00
 #PBS -l nodes=1:ppn=24
 #PBS -m ae
 #PBS -j oe
@@ -10,5 +10,9 @@ cd $PBS_O_WORKDIR
 echo $PBS_O_WORKDIR
 echo 'starting'
 echo -n 'Job is running on node '; cat $PBS_NODEFILE
-python lognormal.py
+#python lognormal.py
+source /home/users/ksf293/miniconda3/etc/profile.d/conda.sh
+conda activate nbodykit3
+python compute_cf.py
+#python lognormal.py
 echo 'done'

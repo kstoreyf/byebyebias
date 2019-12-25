@@ -53,7 +53,7 @@ def counts_smu(ra_data, dec_data, z_data, ra_rand, dec_rand, z_rand, rpbins,
     end = time.time()
     print("Time DD pairs:", end - start)
     print("DD:", dd_proj)
-    print(dd_res_corrfunc)
+    #print(dd_res_corrfunc)
 
     #TODO: allow cross-correlations
     print('Computing DR pairs')
@@ -65,7 +65,7 @@ def counts_smu(ra_data, dec_data, z_data, ra_rand, dec_rand, z_rand, rpbins,
     end = time.time()
     print("Time DR pairs:", end - start)
     print("DR:", dr_proj)
-    print(dr_res_corrfunc)
+    #print(dr_res_corrfunc)
 
     print('Computing RR pairs')
     start = time.time()
@@ -75,8 +75,8 @@ def counts_smu(ra_data, dec_data, z_data, ra_rand, dec_rand, z_rand, rpbins,
     end = time.time()
     print("Time RR pairs:", end - start)
     print("RR:", rr_proj)
-    print("QQ:", rr_projt)
-    print(rr_res_corrfunc)
+    #print("QQ:", rr_projt)
+    #print(rr_res_corrfunc)
 
     return dd_proj, dr_proj, rr_proj, rr_projt, \
            dd_res_corrfunc, dr_res_corrfunc, rr_res_corrfunc

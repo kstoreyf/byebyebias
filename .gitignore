@@ -8,3 +8,5 @@ catalogs/
 tables/
 .ipynb_checkpoints/
 *.sw*
+*.prof
+profile*.png
