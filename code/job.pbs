@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N compcf_tophat44_n100_nbar1e-4
+#PBS -N compcf_tophat22_n10_nbar3e-4
 #PBS -l walltime=72:00:00
 #PBS -l nodes=1:ppn=24
 #PBS -m ae

@@ -37,11 +37,11 @@ def main():
 
 
 def multi():
-    nrealizations = 100
+    nrealizations = 10
     boxsize = 750
-    nbar_str = '1e-4'
+    nbar_str = '3e-4'
     #nbar_str = '3e-4'
-    nbins = 44
+    nbins = 22
     #projs = ['quadratic_spline']
     #proj_tags = ['quadratic_n{:d}'.format(nbins)]
     projs = ['tophat']
