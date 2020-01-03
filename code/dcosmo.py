@@ -4,16 +4,16 @@ from nbodykit.lab import cosmology
 from utils import partial_derivative
 
 
-def write_bases(rmin, rmax,  saveto, ncont=300, **kwargs):
+def write_bases(rmin, rmax, saveto, ncont=300, **kwargs):
     bases = get_bases(rmin, rmax, ncont=ncont, **kwargs)
     np.savetxt(saveto, bases.T)
     nprojbins = bases.shape[0]-1
     return nprojbins, saveto
 
 
-def get_bases(rmin, rmax,  ncont=300, params=None, cosmo_base=None, redshift=None):
-    if params is None or cosmo_base is None or redshift is None:
-        raise ValueError("Must pass params and cosmo_base and redshift!")
+def get_bases(rmin, rmax, ncont=300, params=None, cosmo_base=None, redshift=0):
+    if params is None or cosmo_base is None:
+        raise ValueError("Must pass params and cosmo_base!")
     
     nbases = len(params)+1
     rcont = np.linspace(rmin, rmax, ncont)

@@ -18,7 +18,8 @@ import plotter
 import corrfuncproj
 import spline
 import dcosmo
-import kernel 
+import kernel
+import bao 
 
 from Corrfunc.utils import compute_amps
 from Corrfunc.utils import evaluate_xi
@@ -37,15 +38,20 @@ def main():
 
 
 def multi():
-    nrealizations = 10
+    nrealizations = 1
     boxsize = 750
-    nbar_str = '3e-4'
+    nbar_str = '1e-4'
     #nbar_str = '3e-4'
     nbins = 22
     #projs = ['quadratic_spline']
     #proj_tags = ['quadratic_n{:d}'.format(nbins)]
-    projs = ['tophat']
-    proj_tags = ['tophat_n{:d}'.format(nbins)]
+    #projs = ['tophat']
+    #proj_tags = ['tophat_n{:d}'.format(nbins)]
+    projs = ['bao']
+    proj_tags = ['bao_alpha1.05']
+    # for bao only
+    kwargs = {'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
+    
     #projs = ['gaussian_kernel']
     #proj_tags = ['gaussian_kernel']
     #py_str = '_py2'
@@ -58,7 +64,7 @@ def multi():
     
     # for dcosmo only
     # TODO: make sure cosmo is aligned with sim loaded in
-    kwargs = {}
+    #kwargs = {}
     #kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
 
     seeds = np.arange(nrealizations)
@@ -100,7 +106,7 @@ def multi():
     ### STANDARD RANDOMS
     ### check if random counts already exist for tag, if not then count
     if compute_standard:
-        save_rrstandard_fn = '{}/rr_qq_standard_lin_{}{}.npy'.format(result_dir, proj_tags[i], cat_tag)
+        save_rrstandard_fn = '{}/rr_qq_standard_lin{}.npy'.format(result_dir, cat_tag)
         if not os.path.isfile(save_rrstandard_fn):
             print("Computing randoms for standard")
             rr = counts_corrfunc_auto(random, rbins, boxsize)
@@ -426,6 +432,11 @@ def get_proj_parameters(proj, rbins=None, **kwargs):
         projfn = '../tables/gaussian_kernel.dat'
         ncont = len(rbins)-1
         nprojbins, _ = kernel.write_bases(rbins[0], rbins[-1], projfn, ncont=ncont)
+    elif proj=='bao':
+        proj_type = 'generalr'
+        projfn = '../tables/bao.dat'
+        print(kwargs)
+        nprojbins, _ = bao.write_bases(rbins[0], rbins[-1], projfn, **kwargs) 
     else:
       raise ValueError("Proj type {} not recognized".format(proj_type))
     print("nprojbins:", nprojbins)
