@@ -29,9 +29,10 @@ def main():
 
 def realizations():
     boxsize = 750
-    nbar_str = '3e-4'
-    nrealizations = 100
-    seeds = np.arange(nrealizations)
+    nbar_str = '1e-5'
+    #nrealizations = 11
+    #seeds = np.arange(nrealizations)
+    seeds = [10]
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
     
     print("Making lognormal mocks for {}".format(tag))

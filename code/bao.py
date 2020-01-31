@@ -4,7 +4,7 @@ from nbodykit.lab import cosmology
 from utils import partial_derivative
 
 
-def write_bases(rmin, rmax, saveto, ncont=300, **kwargs):
+def write_bases(rmin, rmax, saveto, ncont=1000, **kwargs):
     bases = get_bases(rmin, rmax, ncont=ncont, **kwargs)
     np.savetxt(saveto, bases.T)
     nprojbins = bases.shape[0]-1
@@ -20,7 +20,7 @@ def bao_bases(s, cf_func, p1=1, p2=1, p3=1):
     cf = cf_func(s)
     b4 = cf
 
-    alpha = 1.01
+    alpha = 1.001
     dalpha = 1-alpha
     dxi_dalpha = partial_derivative(cf, cf_func(alpha*s), dalpha)
     b5 = dalpha*dxi_dalpha
@@ -28,7 +28,7 @@ def bao_bases(s, cf_func, p1=1, p2=1, p3=1):
     return b1,b2,b3,b4,b5
 
 
-def get_bases(rmin, rmax, ncont=300, cosmo_base=None, redshift=0):
+def get_bases(rmin, rmax, ncont=1000, cosmo_base=None, redshift=0):
 
     if not cosmo_base:
         raise ValueError("Must pass cosmo_base!")
@@ -37,7 +37,7 @@ def get_bases(rmin, rmax, ncont=300, cosmo_base=None, redshift=0):
     CF = cosmology.correlation.CorrelationFunction(Plin)
 
     def cf_model(s):
-        alpha_model = 1.05
+        alpha_model = 1.00
         return CF(alpha_model*s)
 
     rcont = np.linspace(rmin, rmax, ncont)

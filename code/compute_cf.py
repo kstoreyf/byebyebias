@@ -39,16 +39,21 @@ def main():
 
 def multi():
     nrealizations = 1
+    seeds = [10]
+    #seeds = np.arange(nrealizations)
     boxsize = 750
     nbar_str = '1e-4'
     #nbar_str = '3e-4'
-    nbins = 22
+    #nbins = 1000
+    nbins = 11
+    #projs = [None]
+    #proj_tags = ['none']
     #projs = ['quadratic_spline']
-    #proj_tags = ['quadratic_n{:d}'.format(nbins)]
+    #proj_tags = ['quadratic_n{:d}_cont1000'.format(nbins)]
     #projs = ['tophat']
-    #proj_tags = ['tophat_n{:d}'.format(nbins)]
+    #proj_tags = ['tophat_n{:d}_cont1000'.format(nbins)]
     projs = ['bao']
-    proj_tags = ['bao_alpha1.05']
+    proj_tags = ['bao_alpha1.01']
     # for bao only
     kwargs = {'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
     
@@ -56,6 +61,8 @@ def multi():
     #proj_tags = ['gaussian_kernel']
     #py_str = '_py2'
     compute_standard = False # also compute the standard estimator
+    overwrite = True
+    overwrite_rr = False
     py_str = ''
     if 'py2' in py_str:
         allow_pickle = False
@@ -67,7 +74,6 @@ def multi():
     #kwargs = {}
     #kwargs = {'params':['Omega_cdm', 'Omega_b', 'h'], 'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
 
-    seeds = np.arange(nrealizations)
     cat_tag = '_L{}_nbar{}{}'.format(boxsize, nbar_str, py_str)
    
     tagstr = ','.join(proj_tags)
@@ -98,6 +104,8 @@ def multi():
     rbins = np.linspace(rmin, rmax, nbins+1)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
     r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag), allow_pickle=allow_pickle)
+    # TODO: MAKE SIM MORE BINS, THIS IS HACKY
+    r_lin = np.linspace(min(r_lin), max(r_lin), 1000)
     if log:
         rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
         rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
@@ -107,7 +115,7 @@ def multi():
     ### check if random counts already exist for tag, if not then count
     if compute_standard:
         save_rrstandard_fn = '{}/rr_qq_standard_lin{}.npy'.format(result_dir, cat_tag)
-        if not os.path.isfile(save_rrstandard_fn):
+        if not os.path.isfile(save_rrstandard_fn) or overwrite_rr:
             print("Computing randoms for standard")
             rr = counts_corrfunc_auto(random, rbins, boxsize)
             np.save(save_rrstandard_fn, rr)
@@ -121,7 +129,7 @@ def multi():
     rr_projs, qq_projs = [], []
     for i in range(len(projs)):
         save_rrproj_fn = '{}/rr_qq_proj_lin_{}{}.npy'.format(result_dir, proj_tags[i], cat_tag)
-        if not os.path.isfile(save_rrproj_fn):
+        if not os.path.isfile(save_rrproj_fn) or overwrite_rr:
             print("Computing randoms for projection {}".format(proj_tags[i]))
             rr_proj, qq_proj = counts_cf_proj_auto(randomsky, rbins, r_lin, projs[i], qq=True, **kwargs)
             np.save(save_rrproj_fn, [rr_proj, qq_proj])
@@ -144,7 +152,7 @@ def multi():
 
         if compute_standard:
             save_standard_fn = '{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, 'standard', cat_tag, seed)
-            if not os.path.isfile(save_standard_fn):
+            if not os.path.isfile(save_standard_fn) or overwrite:
                 dd = counts_corrfunc_auto(data, rbins, boxsize)
                 dr = counts_corrfunc_cross(data, random, rbins, boxsize)
                 xi_stan = compute_cf(dd, dr, rr, nd, nr, 'ls')
@@ -156,12 +164,13 @@ def multi():
             print("COMPUTING: Proj {}, cat_tag {}, seed {}".format(proj_tags[i], cat_tag, seed))
             save_fn = '{}/cf_lin_{}{}_seed{}.npy'.format(result_dir, proj_tags[i], cat_tag, seed)
                    
-            if not os.path.isfile(save_fn):
+            if not os.path.isfile(save_fn) or overwrite:
                 start = time.time()
                 proj = projs[i]
                 dd_proj = counts_cf_proj_auto(datasky, rbins, r_lin, proj, qq=False, **kwargs)
                 dr_proj = counts_cf_proj_cross(datasky, randomsky, rbins, r_lin, proj, **kwargs)
                 r_proj, xi_proj, amps_proj = compute_cf_proj(dd_proj, dr_proj, rr_projs[i], qq_projs[i], nd, nr, rbins, r_lin, proj, **kwargs)
+                print("Amplitudes:", amps_proj)
                 np.save(save_fn, [r_proj, xi_proj, amps_proj, proj])
                 end = time.time()
                 print("Saved to {}".format(save_fn))
@@ -203,6 +212,9 @@ def single():
     rbins = np.linspace(rmin, rmax, nbins)
     rbins_avg = 0.5*(rbins[1:]+rbins[:-1])
     r_lin, _, _ = np.load('{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', cat_tag))
+    # TODO: MAKE SIM MORE BINS, THIS IS HACKY
+    r_lin = np.linspace(min(r_lin), max(r_lin), 1000)
+    
     if log:
         rbins_log = np.logspace(np.log10(rmin), np.log10(rmax), nbins)
         rbins_avg_log = 10 ** (0.5 * (np.log10(rbins_log)[1:] + np.log10(rbins_log)[:-1]))
@@ -395,7 +407,7 @@ def compute_cf_proj(dd, dr, rr, qq, nd, nr, rbins, r_cont, proj, **kwargs):
         amps = np.array(amps)
 
         rbins = np.array(rbins)
-        xi_proj = evaluate_xi(nprojbins, amps, len(r_cont), r_cont, len(rbins), rbins, proj_type, projfn=projfn)
+        xi_proj = evaluate_xi(nprojbins, amps, len(r_cont), r_cont, len(rbins)-1, rbins, proj_type, projfn=projfn)
         print("Computed xi")
     return r_proj, xi_proj, amps
 
