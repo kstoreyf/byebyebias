@@ -4,19 +4,20 @@ from scipy.interpolate import BSpline
 
 
 def main():
-	
-	#test use
-	rmin = 0
-	rmax = 4
-	nbins = 5
-	order = 2
-	bases = get_bases(rmin, rmax, nbins, order)
+    
+    #test use
+    rmin = 0
+    rmax = 4
+    nbins = 5
+    order = 2
+    bases = get_bases(rmin, rmax, nbins, order)
 
 
-def write_bases(rmin, rmax, nbins, order, saveto, ncont=300):
-	bases = get_bases(rmin, rmax, nbins, order, ncont=ncont)
-	np.savetxt(saveto, bases.T)
-	return saveto
+def write_bases(rmin, rmax, nbins, order, saveto, ncont=1000):
+    bases = get_bases(rmin, rmax, nbins, order, ncont=ncont)
+    print(len(bases))
+    np.savetxt(saveto, bases.T)
+    return saveto
 
 # get knot vectors
 def get_kvs(rmin, rmax, nbins, order):
@@ -34,12 +35,13 @@ def get_kvs(rmin, rmax, nbins, order):
         kvs[idx] = rmin+width*j + np.arange(0,nknots)*width                     
     return kvs
 
-def get_bases(rmin, rmax, nbins, order, ncont=300):
+def get_bases(rmin, rmax, nbins, order, ncont=1000):
     if nbins<order*2:
         # does it have to be 2*order + 1? seems fine for piecewise, but for higher orders?
         raise ValueError("nbins must be at least twice the order")
     kvs = get_kvs(rmin, rmax, nbins, order)
-    print(kvs)
+    print("get_bases")
+    print(nbins)
     rcont = np.linspace(rmin, rmax, ncont)
     bases = np.empty((nbins+1, ncont))
     bases[0,:] = rcont
@@ -47,8 +49,9 @@ def get_bases(rmin, rmax, nbins, order, ncont=300):
         kv = kvs[n]
         b = BSpline.basis_element(kv)
         bases[n+1,:] = [b(r) if kv[0]<=r<=kv[-1] else 0 for r in rcont]
+    print(len(bases))
     return bases
 
 
 if __name__=='__main__':
-	main()
+    main()

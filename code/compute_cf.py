@@ -38,22 +38,24 @@ def main():
 
 
 def multi():
-    nrealizations = 1
-    seeds = [10]
-    #seeds = np.arange(nrealizations)
+    nrealizations = 100
+    #seeds = [10]
+    seeds = np.arange(0,nrealizations)
     boxsize = 750
-    nbar_str = '1e-4'
+    nbar_str = '3e-4'
     #nbar_str = '3e-4'
     #nbins = 1000
-    nbins = 11
+    nbins = 22
     #projs = [None]
     #proj_tags = ['none']
+    #projs = ['cubic_spline']
+    #proj_tags = ['cubic_n{:d}_cont1000'.format(nbins)]
     #projs = ['quadratic_spline']
     #proj_tags = ['quadratic_n{:d}_cont1000'.format(nbins)]
-    #projs = ['tophat']
-    #proj_tags = ['tophat_n{:d}_cont1000'.format(nbins)]
-    projs = ['bao']
-    proj_tags = ['bao_alpha1.01']
+    projs = ['tophat']
+    proj_tags = ['tophat_n{:d}_cont1000'.format(nbins)]
+    #projs = ['bao']
+    #proj_tags = ['bao_alpha1.01']
     # for bao only
     kwargs = {'cosmo_base':nbodykit.cosmology.Planck15, 'redshift':0}
     
@@ -61,7 +63,7 @@ def multi():
     #proj_tags = ['gaussian_kernel']
     #py_str = '_py2'
     compute_standard = False # also compute the standard estimator
-    overwrite = True
+    overwrite = False
     overwrite_rr = False
     py_str = ''
     if 'py2' in py_str:
@@ -439,6 +441,11 @@ def get_proj_parameters(proj, rbins=None, **kwargs):
         proj_type = 'generalr'
         projfn = '../tables/quadratic_spline.dat'
         spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 2, projfn)
+    elif proj=='cubic_spline':
+        nprojbins = len(rbins)-1
+        proj_type = 'generalr'
+        projfn = '../tables/cubic_spline.dat'
+        spline.write_bases(rbins[0], rbins[-1], len(rbins)-1, 3, projfn) 
     elif proj=='gaussian_kernel':
         nprojbins = len(rbins)-1
         projfn = '../tables/gaussian_kernel.dat'

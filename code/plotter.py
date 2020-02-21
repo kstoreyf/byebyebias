@@ -8,8 +8,11 @@ from matplotlib import pyplot as plt
 color_dict = {'True':'black', 'tophat':'blue', 'standard': 'orange', 'piecewise':'crimson', 'linear spline':'red', 'cosmo deriv':'purple', 'triangle':'crimson'}
 
 def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=None,
-            log=False, err=False, zoom=False, error_regions=None, xlim=None, cont=True):
+            log=False, err=False, zoom=False, error_regions=None, xlim=None, cont=True, label_rmse=True):
 
+    print(np.array(rs).shape)
+
+    print('rmse:',label_rmse)
     if not alphas:
         alphas = np.ones(len(colors))
     print('plotting')
@@ -22,7 +25,8 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
         ax = [ax]
     
     if cont:
-        lss = ['-', '--', '-.', ':']
+        #lss = ['-', '--', '-.', ':']
+        lss = ['-','-.','-']
         marker = 'None'
     else:
         lss = ['None']*len(rs)
@@ -33,11 +37,12 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
             xmin = 0
         else:
             xmin = 40
-        xmax = max(np.flatten(rs))
+        xmax = max(np.array(rs).flatten())
     else:
         xmin, xmax = xlim
     r_t = np.array([r_true[k] for k in range(len(r_true)) if xmin<=r_true[k]<xmax])
     cf_t = np.array([cf_true[k] for k in range(len(r_true)) if xmin<=r_true[k]<xmax])
+   
     #cf_t = 1 + cf_t
     #cf_t = r_t**2 * cf_t
     ax[0].plot(r_t, cf_t, color='k', label='True', ls=lss[0], marker=marker, lw=2.5)
@@ -54,12 +59,14 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
         upper = np.array([upper[k] for k in range(len(rs[j])) if xmin<=rs[j][k]<xmax])
         #cf = 1 + cf
         #cf = r**2 * cf
-
-        if len(rs[j])==len(r_true):
+        print(len(rs[j]), len(r_true))
+        print(max(rs[j]), max(r_true))
+        if len(rs[j])==len(r_true) and abs(max(rs[j])-max(r_true))<0.01:
             #marker = None
             #ls = '-'
             rmserr = rmse(cf, cf_t)
-            if labels[j] is not None:
+            print(labels[j], "RMSE: {:.2e}".format(rmserr))
+            if label_rmse:
                 label = '{} (rmse: {:.2e})'.format(labels[j], rmserr)
             else:
                 label = labels[j]
@@ -67,7 +74,7 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
             #marker = 'o'
             #ls = 'None'
             label = labels[j]
-        
+       
         ax[0].plot(r, cf, color=colors[j], alpha=alphas[j], 
                             label=label, marker=marker, ls=lss[j], lw=2.5)
 
@@ -114,6 +121,8 @@ def plot_cf_cont(rs, cfs, r_true, cf_true, labels, colors, alphas=None, saveto=N
         #ax[1].set_ylabel('fractional error')
         ax[1].set_ylabel(r'$\xi(r)$ - $\xi_{true}(r)$')
         #ax[1].set_ylim(-5, 5)
+    else:
+        ax[0].set_xlabel(r'r (h$^{-1}$ Mpc)')
 
     ax[0].legend()
 

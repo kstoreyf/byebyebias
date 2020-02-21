@@ -29,10 +29,10 @@ def main():
 
 def realizations():
     boxsize = 750
-    nbar_str = '1e-5'
+    nbar_str = '3e-4'
     #nrealizations = 11
     #seeds = np.arange(nrealizations)
-    seeds = [10]
+    seeds = [999]
     tag = '_L{}_nbar{}'.format(boxsize, nbar_str)
     
     print("Making lognormal mocks for {}".format(tag))
@@ -45,9 +45,9 @@ def realizations():
     rand_fn = '{}/rand{}_10x.dat'.format(cat_dir, tag)
     datasky_fn = '{}/catsky_lognormal{}.dat'.format(cat_dir, tag)
     randsky_fn = '{}/randsky{}_10x.dat'.format(cat_dir, tag)
-    pk_fn = '{}/pk{}.dat'.format(cat_dir, tag)
-    cf_lin_fn = '{}/cf_lin_{}{}.npy'.format(cat_dir, 'true', tag)
-    cf_log_fn = '{}/cf_log_{}{}.npy'.format(cat_dir, 'true', tag)
+    pk_fn = '{}/pk_cont1000{}.dat'.format(cat_dir, tag)
+    cf_lin_fn = '{}/cf_lin_{}{}.npy'.format(cat_dir, 'true_cont1000', tag)
+    cf_log_fn = '{}/cf_log_{}{}.npy'.format(cat_dir, 'true_cont1000', tag)
     nbar = float(nbar_str)
     boxsize = float(boxsize)
 
@@ -60,32 +60,32 @@ def realizations():
     cf(Plin, log=False, saveto=cf_lin_fn)
     cf(Plin, log=True, saveto=cf_log_fn)
 
-    if not os.path.isfile(rand_fn):
-        random = generate_random(nbar, boxsize, savepos=rand_fn)
-        randomsky = to_sky(random['Position'], cosmo, savepos=randsky_fn)
+   # if not os.path.isfile(rand_fn):
+   #     random = generate_random(nbar, boxsize, savepos=rand_fn)
+   #     randomsky = to_sky(random['Position'], cosmo, savepos=randsky_fn)
 
-    for seed in seeds:
-        data_fn = '{}/cat_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
-        datasky_fn = '{}/catsky_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
-        if not os.path.isfile(data_fn):
-            data = generate_data(nbar, boxsize, Plin, seed=seed, savepos=data_fn)
-            datasky = to_sky(data['Position'], cosmo, savepos=datasky_fn)
+   # for seed in seeds:
+   #     data_fn = '{}/cat_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
+   #     datasky_fn = '{}/catsky_lognormal{}_seed{}.dat'.format(cat_dir, tag, seed)
+   #     if not os.path.isfile(data_fn):
+   #         data = generate_data(nbar, boxsize, Plin, seed=seed, savepos=data_fn)
+   #         datasky = to_sky(data['Position'], cosmo, savepos=datasky_fn)
 
 
-def pk(Plin, saveto=None):
+def pk(Plin, saveto=None, ncont=1000):
     print("Power spectrum and correlation function")
-    k = np.logspace(-3, 2, 300)
+    k = np.logspace(-3, 2, ncont)
     Pk = Plin(k)
     if saveto:
         np.save(saveto, [k, Pk])
     return k, Pk
 
 
-def cf(Plin, log=False, rmin=1, rmax=150, saveto=None):
+def cf(Plin, log=False, rmin=1, rmax=150, saveto=None, ncont=1000):
     if log:
-        r = np.logspace(np.log10(rmin), np.log10(rmax), 300)
+        r = np.logspace(np.log10(rmin), np.log10(rmax), ncont)
     else:
-        r = np.linspace(rmin, rmax, 300)
+        r = np.linspace(rmin, rmax, ncont)
     CF = nbodykit.cosmology.correlation.CorrelationFunction(Plin)
     xi = CF(r)#, smoothing=0.0, kmin=10**-2, kmax=10**0)
     if saveto:
